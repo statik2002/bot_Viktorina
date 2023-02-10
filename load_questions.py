@@ -14,7 +14,7 @@ def load_questions(file_path):
         for lll in splited_line:
             element = lll.split('\n')
             if element[0] == 'Ответ:':
-                question['answer'] = element[1]
+                question['answer'] = ' '.join(element[1:])
             if element[0] == 'Источник:':
                 question['source'] = element[1]
             if element[0] == 'Автор:':
@@ -25,6 +25,5 @@ def load_questions(file_path):
         questions.append(question)
 
     return questions
-    # pprint(questions[0]['question'])
 
 
