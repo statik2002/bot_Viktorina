@@ -20,7 +20,7 @@ def load_questions(file_path):
             if element[0] == 'Автор:':
                 question['author'] = element[1]
             if 'Вопрос' in element[0]:
-                question['question'] = ''.join(element[1:])
+                question['question'] = ' '.join(element[1:])
 
         questions.append(question)
 
