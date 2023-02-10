@@ -15,7 +15,7 @@ from utils import load_questions
 
 logger = logging.getLogger(__file__)
 
-NEW_QUESTION, ANSWER, SURRENDER = range(3)
+NEW_QUESTION, ATTEMPT = range(2)
 
 custom_keyboard = [['Новый вопрос', 'Сдаться'],
                    ['Мой счёт']]
@@ -44,14 +44,11 @@ def handle_new_question_request(
         questions,
         redis_client) -> None:
 
-    if update.message.text == 'Новый вопрос':
-        question = questions[random.randrange(len(questions))]
-        redis_client.set(str(update.message.from_user.id), question['question'], 6000)
-        redis_client.set(question['question'], question['answer'], 6000)
-        update.message.reply_text(question['question'])
-        return ANSWER
-    else:
-        return ANSWER
+    question = questions[random.randrange(len(questions))]
+    redis_client.set(str(update.message.from_user.id), question['question'], 6000)
+    redis_client.set(question['question'], question['answer'], 6000)
+    update.message.reply_text(question['question'])
+    return ATTEMPT
 
 
 def handle_solution_attempt(
@@ -63,12 +60,9 @@ def handle_solution_attempt(
     question = redis_client.get(str(update.message.from_user.id))
     answer = re.split(r'\.|\(', redis_client.get(question))
 
-    if update.message.text == 'Сдаться':
-        print(update.message.text)
-        return SURRENDER
     if update.message.text.lower() != answer[0].lower():
         update.message.reply_text(f'Неправильно… Попробуешь ещё раз?', reply_markup=reply_markup)
-        return ANSWER
+        return ATTEMPT
 
     else:
         update.message.reply_text('Правильно! Поздравляю! Для следующего вопроса нажми «Новый вопрос»')
@@ -80,7 +74,6 @@ def handle_surrender(
         context: CallbackContext,
         questions,
         redis_client) -> None:
-    print('Все пропало')
     user = update.message.from_user.id
     question = redis_client.get(str(update.message.from_user.id))
     answer = re.split(r'\.|\(', redis_client.get(question))
@@ -122,19 +115,13 @@ def main() -> None:
         entry_points=[CommandHandler('start', start)],
         states={
             NEW_QUESTION: [
-                MessageHandler(Filters.text & ~Filters.command,
-                               partial(handle_new_question_request, questions=questions, redis_client=redis_client),
-                               )
+                MessageHandler(Filters.regex('^Новый вопрос$'), partial(handle_new_question_request, questions=questions, redis_client=redis_client))
             ],
 
-            ANSWER: [
+            ATTEMPT: [
+                MessageHandler(Filters.regex('^Сдаться$'), partial(handle_surrender, questions=questions, redis_client=redis_client)),
                 MessageHandler(Filters.text & ~Filters.command,
                                partial(handle_solution_attempt, questions=questions, redis_client=redis_client),
-                               )
-            ],
-            SURRENDER: [
-                MessageHandler(Filters.text & ~Filters.command,
-                               partial(handle_surrender, questions=questions, redis_client=redis_client),
                                )
             ],
         },
