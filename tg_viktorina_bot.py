@@ -85,8 +85,8 @@ def handle_surrender(
 
 def cancel(bot, update):
     user = update.message.from_user
-    logger.info("User %s canceled the conversation.", user.first_name)
-    update.message.reply_text('Bye! I hope we can talk again some day.',
+    logger.info("User %s canceled quiz.", user.first_name)
+    update.message.reply_text('Пока пока!',
                               reply_markup=telegram.ReplyKeyboardRemove())
 
     return ConversationHandler.END
@@ -130,16 +130,6 @@ def main() -> None:
         },
         fallbacks=[CommandHandler('cancel', cancel)]
     )
-
-    # dispatcher.add_handler(CommandHandler("start", start))
-    # dispatcher.add_handler(CommandHandler("help", help_command))
-
-    # dispatcher.add_handler(
-    #    MessageHandler(
-    #        Filters.text & ~Filters.command,
-    #        partial(messages, questions=questions, redis_client=redis_client)
-    #    )
-    # )
 
     dispatcher.add_handler(conv_handler)
 

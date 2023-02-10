@@ -21,6 +21,10 @@ def load_questions(file_path):
                 question['author'] = element[1]
             if 'Вопрос' in element[0]:
                 question['question'] = ' '.join(element[1:])
+            if element[0] == 'Комментарий:':
+                question['comment'] = ' '.join(element[1:])
+            if element[0] == 'Зачет:':
+                question['answer2'] = element[1]
 
         questions.append(question)
 
