@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
 
+from error_processing import TelegramLogsHandler
 from load_questions import load_questions
 from questions import select_and_save_question, get_answer
 
@@ -46,7 +47,7 @@ def handle_new_question_request(
 
     question = select_and_save_question(questions, redis_client, update.message.from_user.id)
 
-    update.message.reply_text(question)
+    update.message.reply_text(question, reply_markup=reply_markup)
 
     return ATTEMPT
 
@@ -64,7 +65,7 @@ def handle_solution_attempt(
         return ATTEMPT
 
     else:
-        update.message.reply_text('Правильно! Поздравляю! Для следующего вопроса нажми «Новый вопрос»')
+        update.message.reply_text('Правильно! Поздравляю! Для следующего вопроса нажми «Новый вопрос»', reply_markup=reply_markup)
         return NEW_QUESTION
 
 
@@ -92,12 +93,19 @@ def cancel(bot, update):
     return ConversationHandler.END
 
 
+def error_handler(update, context):
+    logger.error(msg='Ошибка при работе скрипта: ', exc_info=context.error)
+
+
 def main() -> None:
     load_dotenv()
     telegram_token = os.environ['TELEGRAM_TOKEN']
+    chat_id = os.environ['CHAT_ID']
 
+    service_bot = telegram.Bot(token=telegram_token)
     logging.basicConfig(level=logging.ERROR)
     logger.setLevel(logging.DEBUG)
+    logger.addHandler(TelegramLogsHandler(service_bot, chat_id))
 
     questions = load_questions('questions/1vs1200.txt')
 
@@ -132,6 +140,7 @@ def main() -> None:
     )
 
     dispatcher.add_handler(conv_handler)
+    dispatcher.add_error_handler(error_handler)
 
     updater.start_polling()
 

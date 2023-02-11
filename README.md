@@ -35,6 +35,8 @@ pip install -r requirements.txt
 
 `TELEGRAM_TOKEN=Ваш Telegram токен`
 
+`CHAT_ID=id чата` - В этот чат будут отправляться ошибки работы бота. 
+
 `REDIS_HOST=Хост от Redis` - В случае локального сервера Redis - `localhost`
 
 `REDIS_PORT=Порт в Redis`
