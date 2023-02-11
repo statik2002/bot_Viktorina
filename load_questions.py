@@ -1,5 +1,3 @@
-from pprint import pprint
-
 
 def load_questions(file_path):
     with open('questions/1vs1200.txt', 'r', encoding='koi8-r') as quesion_file:
@@ -29,5 +27,3 @@ def load_questions(file_path):
         questions.append(question)
 
     return questions
-
-

@@ -1,14 +1,14 @@
 import logging
 import os
-import random
-import re
 
 import redis
 import telegram
 from functools import partial
 from dotenv import load_dotenv
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
+from telegram.ext import (Updater, CommandHandler,
+                          MessageHandler, Filters,
+                          CallbackContext, ConversationHandler)
 
 from error_processing import TelegramLogsHandler
 from load_questions import load_questions
@@ -24,10 +24,8 @@ reply_markup = telegram.ReplyKeyboardMarkup(custom_keyboard)
 
 
 def start(update: Update, context: CallbackContext) -> None:
-    user = update.effective_user
 
     update.message.reply_text(
-        # fr'Hi {user.mention_markdown_v2()}\!',
         'Привет! Это мега квиз!',
         reply_markup=reply_markup,
     )
@@ -45,7 +43,10 @@ def handle_new_question_request(
         questions,
         redis_client) -> None:
 
-    question = select_and_save_question(questions, redis_client, update.message.from_user.id)
+    question = select_and_save_question(
+        questions,
+        redis_client,
+        update.message.from_user.id)
 
     update.message.reply_text(question, reply_markup=reply_markup)
 
@@ -57,15 +58,23 @@ def handle_solution_attempt(
         context: CallbackContext,
         questions,
         redis_client) -> None:
-    user = update.message.from_user.id
+
     question = redis_client.get(str(update.message.from_user.id))
 
-    if redis_client.get(question).lower().find(update.message.text.lower()) == -1:
-        update.message.reply_text(f'Неправильно… Попробуешь ещё раз?', reply_markup=reply_markup)
+    if redis_client.get(question).lower().find(
+            update.message.text.lower()) == -1:
+        update.message.reply_text(
+            'Неправильно… Попробуешь ещё раз?',
+            reply_markup=reply_markup
+        )
         return ATTEMPT
 
     else:
-        update.message.reply_text('Правильно! Поздравляю! Для следующего вопроса нажми «Новый вопрос»', reply_markup=reply_markup)
+        update.message.reply_text(
+            'Правильно! Поздравляю! Для следующего '
+            'вопроса нажми «Новый вопрос»',
+            reply_markup=reply_markup
+        )
         return NEW_QUESTION
 
 
@@ -76,9 +85,16 @@ def handle_surrender(
         redis_client) -> None:
 
     answer = get_answer(update, redis_client)
-    update.message.reply_text(f'Правильный ответ: {answer}', reply_markup=reply_markup)
+    update.message.reply_text(
+        f'Правильный ответ: {answer}',
+        reply_markup=reply_markup
+    )
 
-    question = select_and_save_question(questions, redis_client, update.message.from_user.id)
+    question = select_and_save_question(
+        questions,
+        redis_client,
+        update.message.from_user.id
+    )
     update.message.reply_text(question)
 
     return ATTEMPT
@@ -120,20 +136,41 @@ def main() -> None:
     updater = Updater(telegram_token)
     dispatcher = updater.dispatcher
 
-    partial_new_question = partial(handle_new_question_request, questions=questions, redis_client=redis_client)
-    partial_solution_attempt = partial(handle_solution_attempt, questions=questions, redis_client=redis_client)
-    partial_surrender = partial(handle_surrender, questions=questions, redis_client=redis_client)
+    partial_new_question = partial(
+        handle_new_question_request,
+        questions=questions,
+        redis_client=redis_client
+    )
+    partial_solution_attempt = partial(
+        handle_solution_attempt,
+        questions=questions,
+        redis_client=redis_client
+    )
+    partial_surrender = partial(
+        handle_surrender,
+        questions=questions,
+        redis_client=redis_client
+    )
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
             NEW_QUESTION: [
-                MessageHandler(Filters.regex('^Новый вопрос$'), partial_new_question)
+                MessageHandler(
+                    Filters.regex('^Новый вопрос$'),
+                    partial_new_question
+                )
             ],
 
             ATTEMPT: [
-                MessageHandler(Filters.regex('^Сдаться$'), partial_surrender),
-                MessageHandler(Filters.text & ~Filters.command, partial_solution_attempt)
+                MessageHandler(
+                    Filters.regex('^Сдаться$'),
+                    partial_surrender
+                ),
+                MessageHandler(
+                    Filters.text & ~Filters.command,
+                    partial_solution_attempt
+                )
             ],
         },
         fallbacks=[CommandHandler('cancel', cancel)]
