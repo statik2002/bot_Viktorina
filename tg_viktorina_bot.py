@@ -1,6 +1,6 @@
+import argparse
 import logging
 import os
-
 import redis
 import telegram
 from functools import partial
@@ -11,8 +11,7 @@ from telegram.ext import (Updater, CommandHandler,
                           CallbackContext, ConversationHandler)
 
 from error_processing import TelegramLogsHandler
-from load_questions import load_questions
-from questions import select_and_save_question, get_answer
+from questions import select_and_save_question, get_answer, load_questions
 
 logger = logging.getLogger(__file__)
 
@@ -31,10 +30,6 @@ def start(update: Update, context: CallbackContext) -> None:
     )
 
     return NEW_QUESTION
-
-
-def help_command(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Help!')
 
 
 def handle_new_question_request(
@@ -84,7 +79,7 @@ def handle_surrender(
         questions,
         redis_client) -> None:
 
-    answer = get_answer(update, redis_client)
+    answer = get_answer(update.message.from_user.id, redis_client)
     update.message.reply_text(
         f'Правильный ответ: {answer}',
         reply_markup=reply_markup
@@ -102,7 +97,7 @@ def handle_surrender(
 
 def cancel(bot, update):
     user = update.message.from_user
-    logger.info("User %s canceled quiz.", user.first_name)
+    logger.info("Пользователь %s завершил викторину.", user.first_name)
     update.message.reply_text('Пока пока!',
                               reply_markup=telegram.ReplyKeyboardRemove())
 
@@ -114,6 +109,16 @@ def error_handler(update, context):
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description='Telegram бот викторины',
+    )
+    parser.add_argument(
+        '--path',
+        help='путь к файлу с вопросами и ответами',
+        default='questions/1vs1200.txt'
+    )
+    args = parser.parse_args()
+
     load_dotenv()
     telegram_token = os.environ['TELEGRAM_TOKEN']
     chat_id = os.environ['CHAT_ID']
@@ -123,7 +128,7 @@ def main() -> None:
     logger.setLevel(logging.DEBUG)
     logger.addHandler(TelegramLogsHandler(service_bot, chat_id))
 
-    questions = load_questions('questions/1vs1200.txt')
+    questions = load_questions(args.path)
 
     redis_client = redis.StrictRedis(
         host=os.environ['REDIS_HOST'],

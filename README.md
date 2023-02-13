@@ -31,6 +31,8 @@ pip install -r requirements.txt
 ```
 
 # Подготовка к запуску
+Сохраните файлы с вопросами в папку `questions`
+
 Создайте файл в каталоге со скриптами файл `.env` и впишите туда следующие переменные:
 
 `TELEGRAM_TOKEN=Ваш Telegram токен`
@@ -50,10 +52,12 @@ pip install -r requirements.txt
 
 Для запуска Telegram бота выполните:
 ```commandline
-python tg_viktorina_bot.py
+python tg_viktorina_bot.py path
 ```
+Где path - путь к файлу с вопросами и ответами. Параметр не обязательный, по умолчанию грузиться `questions/1vs1200.txt`
 
 Для запуска VK бота выполните:
 ```commandline
-python vk_viktorina_bot.py
+python vk_viktorina_bot.py path
 ```
+Где path - путь к файлу с вопросами и ответами. Параметр не обязательный, по умолчанию грузиться `questions/1vs1200.txt`
