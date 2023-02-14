@@ -1,6 +1,8 @@
 import argparse
 import logging
 import os
+import random
+
 import redis
 import telegram
 from functools import partial
@@ -11,7 +13,7 @@ from telegram.ext import (Updater, CommandHandler,
                           CallbackContext, ConversationHandler)
 
 from error_processing import TelegramLogsHandler
-from questions import select_and_save_question, get_answer, load_questions
+from questions import load_questions
 
 logger = logging.getLogger(__file__)
 
@@ -38,12 +40,15 @@ def handle_new_question_request(
         questions,
         redis_client) -> None:
 
-    question = select_and_save_question(
-        questions,
-        redis_client,
-        update.message.from_user.id)
+    question = questions[random.randrange(len(questions))]
+    redis_client.set(
+        str(update.message.from_user.id),
+        question['question'],
+        6000
+    )
+    redis_client.set(question['question'], question['answer'], 6000)
 
-    update.message.reply_text(question, reply_markup=reply_markup)
+    update.message.reply_text(question['question'], reply_markup=reply_markup)
 
     return ATTEMPT
 
@@ -56,8 +61,10 @@ def handle_solution_attempt(
 
     question = redis_client.get(str(update.message.from_user.id))
 
-    if redis_client.get(question).lower().find(
-            update.message.text.lower()) == -1:
+    saved_answer = redis_client.get(question)
+    user_answer = update.message.text
+
+    if saved_answer.lower().find(user_answer.lower()) == -1:
         update.message.reply_text(
             'Неправильно… Попробуешь ещё раз?',
             reply_markup=reply_markup
@@ -79,18 +86,21 @@ def handle_surrender(
         questions,
         redis_client) -> None:
 
-    answer = get_answer(update.message.from_user.id, redis_client)
+    question = redis_client.get(str(update.message.from_user.id))
+    answer = ''.join(redis_client.get(question))
     update.message.reply_text(
         f'Правильный ответ: {answer}',
         reply_markup=reply_markup
     )
 
-    question = select_and_save_question(
-        questions,
-        redis_client,
-        update.message.from_user.id
+    new_question = questions[random.randrange(len(questions))]
+    redis_client.set(
+        str(update.message.from_user.id),
+        new_question['question'],
+        6000
     )
-    update.message.reply_text(question)
+    redis_client.set(new_question['question'], new_question['answer'], 6000)
+    update.message.reply_text(new_question['question'])
 
     return ATTEMPT
 

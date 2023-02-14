@@ -2,6 +2,8 @@ import argparse
 import os
 import random
 import logging
+from textwrap import dedent
+
 import redis
 import telegram
 import vk_api as vk
@@ -10,7 +12,7 @@ from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 
 from error_processing import TelegramLogsHandler
-from questions import select_and_save_question, load_questions, get_answer
+from questions import load_questions
 
 logger = logging.getLogger(__name__)
 
@@ -18,28 +20,42 @@ logger = logging.getLogger(__name__)
 def answer_message(event, vk_api, keyboard, questions, redis_client, user_id):
 
     question = redis_client.get(str(user_id))
-    answer = get_answer(user_id, redis_client)
+    answer = ''.join(redis_client.get(question))
 
     if event.text == 'Сдаться':
-        new_question = select_and_save_question(
-            questions,
-            redis_client,
-            user_id
+        new_question = questions[random.randrange(len(questions))]
+        redis_client.set(str(user_id), new_question['question'], 6000)
+        redis_client.set(
+            new_question['question'],
+            new_question['answer'],
+            6000
         )
-        message = f'Правильный ответ: {answer}\n\n' \
-                  f'Следующий вопрос: \n{new_question}'
+        message = dedent(f"""\
+                    Правильный ответ: {answer}
+                    Следующий вопрос: {new_question['question']}""")
 
     elif event.text == 'Новый вопрос':
-        message = select_and_save_question(questions, redis_client, user_id)
+        new_question = questions[random.randrange(len(questions))]
+        redis_client.set(str(user_id), new_question['question'], 6000)
+        redis_client.set(
+            new_question['question'],
+            new_question['answer'],
+            6000
+        )
+        message = new_question['question']
 
     else:
-        if redis_client.get(question).lower().find(
-                event.text.lower()) == -1:
+        saved_answer = redis_client.get(str(question))
+        if not saved_answer:
+            return
+        user_answer = event.text
+        if saved_answer.lower().find(user_answer.lower()) == -1:
             message = 'Неправильно… Попробуешь ещё раз?',
 
         else:
-            message = 'Правильно! Поздравляю! ' \
-                      'Для следующего вопроса нажми «Новый вопрос»',
+            message = dedent("""\
+                        Правильно! Поздравляю!
+                        Для следующего вопроса нажми «Новый вопрос»""")
 
     vk_api.messages.send(
         user_id=user_id,
@@ -71,7 +87,7 @@ def main():
     logger.setLevel(logging.DEBUG)
     logger.addHandler(TelegramLogsHandler(bot, chat_id))
 
-    keyboard = VkKeyboard(one_time=True)
+    keyboard = VkKeyboard(one_time=False)
     keyboard.add_button('Новый вопрос', color=VkKeyboardColor.PRIMARY)
     keyboard.add_button('Сдаться', color=VkKeyboardColor.NEGATIVE)
     keyboard.add_line()
